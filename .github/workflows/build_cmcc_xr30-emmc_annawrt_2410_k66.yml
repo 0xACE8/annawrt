@@ -1,0 +1,318 @@
+#
+# Copyright (c) 2019-2026 0xACE8
+#
+# This is free software, licensed under the MIT License.
+# See /LICENSE for more information.
+#
+# https://github.com/0xACE8
+#
+# Description: A modular, privacy-focused OpenWrt build pipeline powered by GitHub Actions.
+# 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
+#
+
+name: Build cmcc_xr30-emmc annawrt 24.10 kernel 6.6 actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      restore_config:
+        description: 'Restore Configuration 🇯🇵 設定を復元'
+        type: boolean
+        default: false
+      telegram_notify:
+        description: 'Telegram Notification 🇯🇵 Telegram通知'
+        type: boolean
+        default: false
+      upload_firmware:
+        description: 'Upload to Artifacts　 🇯🇵 Artifactに保存'
+        type: boolean
+        default: false
+      upload_release:
+        description: 'Upload to Release　　 🇯🇵 Releaseに公開'
+        type: boolean
+        default: false
+#  schedule:
+#    - cron: '0 19 * * 0'
+
+env:
+  # annawrt 2410
+  PONLY2410_K66_REPO_LINK:              ${{ secrets.PONLY2410_K66_REPO_LINK }}
+  PONLY2410_K66_REPO_TREE:              ${{ secrets.PONLY2410_K66_REPO_TREE }}
+  PONLY2410_K66_REPO_DIFF:              ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+  # cmcc-xr30-emmc
+  CMCC_XR30_EMMC_PONLY2410_K66_PATCHES: ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PATCHES }}
+  CMCC_XR30_EMMC_PONLY2410_K66_PROFILE: ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PROFILE }}
+  CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE: ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE }}
+  # access token
+  ACCESS_TOKEN:                         ${{ secrets.ACCESS_TOKEN }}
+  # feeds source
+  ADD_EXTRA_SOURCE:                     ${{ secrets.ADD_EXTRA_SOURCE }}
+  # check sha512sum
+  ACCESS_SHA512SUM:                     ${{ secrets.ACCESS_SHA512SUM }}
+  ACCESS_REPACKAGE:                     ${{ secrets.ACCESS_REPACKAGE }}
+  # cmcc color sytle for argon
+  ARGON_THEME_CMCC:                     ${{ secrets.ARGON_THEME_CMCC }}
+  # telegram bot
+  TELEGRAM_BOT_KEY:                     ${{ secrets.TELEGRAM_BOT_KEY }}
+  TELEGRAM_CHAT_ID:                     ${{ secrets.TELEGRAM_CHAT_ID }}
+  # hardware & repo info
+  DEVICE_NAME:                          CMCC_XR30-EMMC
+  TARGET_CHIP:                          mt7981b
+  TARGET_DISK:                          8GB_eMMC
+  SOURCE_CODE:                          padavanonly
+  KERNEL_VERS:                          kernel_6.6
+  OUTPUT_FILE:                          annawrt-24.10-k6.6-ace-mt7981b-cmcc_xr30-emmc-sysupgrade
+  TZ: "Asia/Tokyo"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout (チェックアウト)
+      uses: actions/checkout@main
+      with:
+        fetch-depth: 0
+
+    - name: Before freeing up disk space (ディスクスペースを解放する前に)
+      run: |
+        echo "ディスクスペースを解放する前に"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+
+    - name: "Optimize Disk Space (ディスクスペースの最適化)"
+      uses: "hugoalh/disk-space-optimizer-ghaction@v0.8.1"
+      with:
+        operate_sudo: "True"
+        general_include: ".+"
+        general_exclude: |-
+          ^GCC$
+          ^G\+\+$
+          Clang
+          LLVM
+        docker_include: ".+"
+        docker_prune: "True"
+        docker_clean: "True"
+        apt_prune: "True"
+        apt_clean: "True"
+        homebrew_prune: "True"
+        homebrew_clean: "True"
+        npm_prune: "True"
+        npm_clean: "True"
+        os_swap: "True"
+
+    - name: Freeing up disk space (ハードドライブの空き容量を増やす)
+      uses: easimon/maximize-build-space@master
+      with: 
+        root-reserve-mb: 8192
+        swap-size-mb: 1
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
+
+    - name: Check Server Performance (サーバーのパフォーマンスを確認する)
+      run: |
+        echo "⚠️警告する⚠️"
+        echo "割り当てられたサーバーのパフォーマンスには制限があります。プラグインを選択しすぎる場合は、CPU パフォーマンスに注意してください。"
+        echo -e "既知のCPUモデル（降順）: 7763，8370C，8272CL，8171M，E5-2673\n"
+        echo "-------------------------CPU 情報---------------------------"
+        echo "CPUの物理数  : $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPUコア数    : $(nproc)"
+        echo -e "CPUモデル情報:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+        echo "------------------------メモリ情報--------------------------"
+        echo "メモリの詳細:"
+        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+        echo "---------------------ハードディスク情報---------------------"
+        echo "ハードディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+    - name: Initialization environment (初期化環境)
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt -yqq update
+        sudo -E apt -yqq full-upgrade
+        sudo -E apt -yqq autoremove --purge
+        sudo -E apt -yqq autoclean
+        sudo -E apt -yqq clean
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E apt -yqq install cargo
+        rustup target add aarch64-unknown-linux-musl
+        sudo -E systemctl daemon-reload
+        sudo timedatectl set-timezone "$TZ"
+        sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
+
+    - name: Setup Git Credentials
+      run: |
+        git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
+        
+    - name: Clone source code (ソースコードのクローン)
+      working-directory: ./
+      run: |
+        df -hT $PWD
+        git clone $PONLY2410_K66_REPO_LINK: -b $PONLY2410_K66_REPO_TREE openwrt
+        cd openwrt
+        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PATCHES }}
+        echo "CMCC_XR30_EMMC_PONLY2410_K66_PATCH done."
+        ${{ secrets.ADD_EXTRA_SOURCE }}
+        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+
+        # Remove All China download sources (中国からのダウンロードソースを削除する)
+        PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
+        if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+          sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+        fi
+
+    - name: Generate Variables (変数を生成する)
+      run: |
+        SOURCE_REPO="$(echo $PONLY2410_K66_REPO_LINK: | awk -F '/' '{print $(NF)}')"
+        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+
+    - name: Cache Toolchain (キャッシュツールチェーン)
+      uses: HiGarfield/cachewrtbuild@main
+      with:
+        ccache: true
+        mixkey: MT7981b-${{ env.SOURCE_CODE }}-${{ env.SOURCE_REPO }}-${{ env.KERNEL_VERS }}-${{ secrets.PONLY2410_K66_REPO_BRANCH }}
+        prefix: ${{ env.OPENWRT_PATH }}
+
+    - name: Updata & install feeds (アップデートとフィードのインストール)
+      working-directory: ./openwrt
+      run: |
+        ./scripts/feeds update -a
+        rm -rf feeds/packages/lang/golang
+        git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+        ./scripts/feeds install -a
+        ./scripts/feeds install -a
+
+    - name: Load custom configuration (カスタム構成を読み込む)
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PROFILE }}
+        echo "load config done."
+        ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+        echo "load repo patch done."
+        ${{ secrets.ARGON_THEME_CMCC }}
+        echo "load theme done."
+
+    - name: Restore configuration archive (バックアップした構成アーカイブを復元する)
+      if: (github.event.inputs.restore_config == 'true' && github.event.inputs.restore_config != 'false') || contains(github.event.action, 'restore_config') && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        rm -rf files
+        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE }}
+        echo "load config backup done."
+        echo "OUTPUT_FILE=annawrt-24.10-k6.6-ace-mt7981b-cmcc_xr30-emmc-configured-sysupgrade" >> $GITHUB_ENV
+
+    - name: Boost Wi-Fi 5G signal to 25dbm (Wi-Fi 5G信号を25dbmまでブースト)
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.BOOST_5G_TO_25DBM }}
+
+    - name: Download package (パッケージをダウンロード)
+      working-directory: ./openwrt
+      id: package
+      run: |
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Compile the firmware (ファームウェアをコンパイルする)
+      working-directory: ./openwrt
+      id: compile
+      run: |
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 || make -j1 V=s
+        echo "status=success" >> $GITHUB_OUTPUT
+        echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Upgrading variables (変数のアップグレード)
+      run: |
+        echo "OUTPUT_FILE=${OUTPUT_FILE}_${FILE_DATE}" >> $GITHUB_ENV
+
+    - name: View Disk Usage (ディスク使用量の表示)
+      if: (!cancelled())
+      run: df -hT
+
+    - name: Telegram notify when compilation error (コンパイルエラーが発生したときにテレグラムを使用して通知する)
+      if: steps.compile.outputs.status != 'success' && (github.event.inputs.telegram_notify == 'true' && github.event.inputs.telegram_notify != 'false') || contains(github.event.action, 'telegram_notify') && !cancelled()
+      env:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_KEY }}
+      run: |
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+
+    - name: Organize files (ファイルを整理する)
+      id: organize
+      if: steps.compile.outputs.status == 'success' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        ls | grep -v *sysupgrade.bin | xargs rm -rdf
+        mv *.bin ${{ env.OUTPUT_FILE }}.bin
+        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.bin
+        ${{ secrets.ACCESS_REPACKAGE }} ${{ env.OUTPUT_FILE }}.bin
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: Upload Firmware To Artifact (Artifactにアップロードする)
+      if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.upload_firmware == 'true' && github.event.inputs.upload_firmware  != 'false') || contains(github.event.action, 'upload_firmware') && !cancelled()
+      uses: actions/upload-artifact@main
+      with:
+        name: ${{ env.OUTPUT_FILE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Telegram notify when compilation complete (コンパイルが成功したらテレグラムを使用して通知する)
+      if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.telegram_notify == 'true' && github.event.inputs.telegram_notify != 'false') || contains(github.event.action, 'telegram_notify') && !cancelled()
+      run: |
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🛜支援デバイス:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💽フラッシュは:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🧿カーネル使用:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・📝ソースコード:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・📦リポジトリを:%0A　%20　${{ env.SOURCE_REPO }}%0Aーーーーーーーーーーーーーーーーー%0A・🔀ブランチ名前:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・📁ファイル名前:%0A　%20　${{ env.OUTPUT_FILE}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+
+    - name: Generate Release Tag (タグを生成する)
+      run: |
+        RELEASE_TAG="$TARGET_CHIP-$DEVICE_NAME-$TARGET_DISK-$KERNEL_VERS-$FILE_DATE"
+        echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+
+    - name: Upload Firmware To Release (ファームウェアをアップロードする)
+      if: steps.compile.outputs.status == 'success' && steps.organize.outputs.status == 'success' && (github.event.inputs.upload_release == 'true' && github.event.inputs.upload_release  != 'false') || contains(github.event.action, 'upload_release') && !cancelled()
+      uses: ncipollo/release-action@v1
+      with:
+        name: ${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_${{ env.KERNEL_VERS }}_${{ env.FILE_DATE }}
+        allowUpdates: false
+        tag: ${{ env.RELEASE_TAG }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: ${{ env.FIRMWARE }}/*
+        body: |
+          **このファームウェアは、CPU「${{ env.TARGET_CHIP }}」モデル「${{ env.DEVICE_NAME }}」を搭載したルーター✅ ${{ env.TARGET_DISK }} ✅にのみ適しています。**
+          ### 📒「${{ env.SOURCE_CODE }}」リポジトリのソースコードからコンパイルされたファームウェア。
+          - 🛜 支援デバイス: ${{ env.DEVICE_NAME }}
+          - 💽 フラッシュは: ${{ env.TARGET_DISK }}
+          - 🧿 カーネル使用: ${{ env.KERNEL_VERS }}
+          - 📝 ソースコード: ${{ env.SOURCE_CODE }}
+          - 📦 リポジトリを: ${{ env.SOURCE_REPO }}
+          - 🔀 ブランチ名前: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+          - 🌐 接続アドレス: 192.168.***.1 または ${{ env.SOURCE_CODE }}.lan
+          - 🔑 パスワードは: なし
+          ### ⚠️ 警告する ⚠️
+          - ‼️現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。
+          - ⛔️強制フラッシュ⛔️によってデバイスが損傷した場合、このリポジトリはデバイスの損傷について一切責任を負いません。
+
+    - name: Delete old workflow runs (古いワークフロー実行を削除する)
+      uses: Mattraks/delete-workflow-runs@main
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 7
+        keep_minimum_runs: 2
+
+    - name: Delete Old Releases (古いリリースを削除する)
+      uses: dev-drprasad/delete-older-releases@master
+      with:
+        keep_latest: 2
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
