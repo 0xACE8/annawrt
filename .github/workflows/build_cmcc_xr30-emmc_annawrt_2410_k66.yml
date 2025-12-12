@@ -156,7 +156,7 @@ jobs:
       working-directory: ./
       run: |
         df -hT $PWD
-        git clone $PONLY2410_K66_REPO_LINK: -b $PONLY2410_K66_REPO_TREE openwrt
+        git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_TREE openwrt
         cd openwrt
         ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PATCHES }}
         echo "CMCC_XR30_EMMC_PONLY2410_K66_PATCH done."
@@ -171,7 +171,7 @@ jobs:
 
     - name: Generate Variables (変数を生成する)
       run: |
-        SOURCE_REPO="$(echo $PONLY2410_K66_REPO_LINK: | awk -F '/' '{print $(NF)}')"
+        SOURCE_REPO="$(echo $PONLY2410_K66_REPO_LINK | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
 
     - name: Cache Toolchain (キャッシュツールチェーン)
