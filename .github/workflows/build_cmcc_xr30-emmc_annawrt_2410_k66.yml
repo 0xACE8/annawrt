@@ -1,12 +1,11 @@
 #
 # Copyright (c) 2019-2026 0xACE8
 #
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
+# 本ソフトウェアはフリーソフトウェアであり、MITライセンスの下で公開されています。
+# 詳細については /LICENSE を参照してください。
 #
 # https://github.com/0xACE8
 #
-# Description: A modular, privacy-focused OpenWrt build pipeline powered by GitHub Actions.
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
@@ -284,8 +283,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE }}/*
         body: |
-          **このファームウェアは、CPU「${{ env.TARGET_CHIP }}」モデル「${{ env.DEVICE_NAME }}」を搭載したルーター✅ ${{ env.TARGET_DISK }} ✅にのみ適しています。**
-          ### 📒「${{ env.SOURCE_CODE }}」リポジトリのソースコードからコンパイルされたファームウェア。
+          **本ファームウェアは、CPU「${{ env.TARGET_CHIP }}」搭載のモデル「${{ env.DEVICE_NAME }}」✅ ${{ env.TARGET_DISK }} ✅専用です。**
+          ### 📒「${{ env.SOURCE_CODE }}」のソースコードを基にビルドされました。
           - 🛜 支援デバイス: ${{ env.DEVICE_NAME }}
           - 💽 フラッシュは: ${{ env.TARGET_DISK }}
           - 🧿 カーネル使用: ${{ env.KERNEL_VERS }}
@@ -294,16 +293,16 @@ jobs:
           - 🔀 ブランチ名前: ${{ secrets.PONLY2410_K66_REPO_TREE }}
           - 🌐 接続アドレス: 192.168.***.1 または ${{ env.SOURCE_CODE }}.lan
           - 🔑 パスワードは: なし
-          ### ⚠️ 警告する ⚠️
-          - ‼️現在のリポジトリによってコンパイルされたファームウェアはすべて非公開でカスタマイズされています。
-          - ⛔️強制フラッシュ⛔️によってデバイスが損傷した場合、このリポジトリはデバイスの損傷について一切責任を負いません。
+          ### ⚠️ 免責事項 ⚠️
+          - ‼️ **本ファームウェアは、個人利用を目的とした非公式のカスタマイズ版です。**
+          - ⛔️ **強制フラッシュ等でデバイスが破損した場合、本リポジトリは一切の責任を負いません。自己責任で使用してください。**
 
     - name: Delete Old Workflows (古いワークフローの削除)
       uses: Mattraks/delete-workflow-runs@main
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
         repository: ${{ github.repository }}
-        retain_days: 6
+        retain_days: 7
         keep_minimum_runs: 2
 
     - name: Delete Old Releases (古いリリースの削除)
