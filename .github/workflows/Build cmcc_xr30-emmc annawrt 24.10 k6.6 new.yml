@@ -232,27 +232,10 @@ jobs:
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
         # Remove China Mirrors (中国国内ミラーの削除)
-        TARGET_FILE="./scripts/projectsmirrors.json"
-        echo "☁️ Processing Mirrors Config (Private Mode)..."
-
-        if [[ "$MIRRORS_LIST_URL" == http* ]]; then
-          echo "🌐 Downloading config from Private Repo..."
-        
-          if curl -H "Authorization: token $GH_TOKEN" \
-                  -H "Accept: application/vnd.github.v3.raw" \
-                  -s -f -L "$MIRRORS_LIST_URL" \
-                  -o "$TARGET_FILE"; then
-           
-             echo "✅ Download Success! (Private access verified)"
-           
-             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$TARGET_FILE"
-          else
-             echo "❌ Error: Download failed! Check your Token permissions or URL."
-             exit 1
+        PROJECT_MIRRORS_FILE="scripts/projectsmirrors.json"
+          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
-        else
-          echo "⚠️ Check Skipped: Secret is empty or not a valid URL."
-        fi
 
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
@@ -321,7 +304,7 @@ jobs:
     - name: Notify Compilation Error (コンパイルエラーの通知)
       if: steps.compile.outcom != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
       run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🖥️ 対応機種:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💿 容量仕様:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🐧 カーネル:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・👤 ソース名:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌲 ソース元:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌿 ブランチ:%0A　%20　${{ secrets.PONLY2410_K66_REPO_HEAD }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🖥️対応機種:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💿容量仕様:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🐧カーネル:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・👤ソース名:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌲ソース元:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌿ブランチ:%0A　%20　${{ secrets.PONLY2410_K66_REPO_HEAD }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Organize Files (ファイルの整理)
       id: organize
@@ -344,7 +327,7 @@ jobs:
     - name: Notify Compilation Success (コンパイル成功の通知)
       if: steps.organize.outcom == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
       run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🖥️ 対応機種:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💿 容量仕様:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🐧 カーネル:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・👤 ソース名:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌲 ソース元:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌿 ブランチ:%0A　%20　${{ secrets.PONLY2410_K66_REPO_HEAD }}%0Aーーーーーーーーーーーーーーーーー%0A・📦 ファイル:%0A　%20　${{ env.OUTPUT_FILE}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🖥️対応機種:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💿容量仕様:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🐧カーネル:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・👤ソース名:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌲ソース元:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌿ブランチ:%0A　%20　${{ secrets.PONLY2410_K66_REPO_HEAD }}%0Aーーーーーーーーーーーーーーーーー%0A・📦ファイル:%0A　%20　${{ env.OUTPUT_FILE}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Upload to Release (Releaseに公開)
       if: steps.organize.outcome == 'success' && env.UPLOAD_RELEASE == 'true' && !cancelled()
