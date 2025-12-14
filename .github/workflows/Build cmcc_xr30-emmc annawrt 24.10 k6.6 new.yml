@@ -274,16 +274,16 @@ jobs:
       working-directory: ./openwrt
       id: loadconfig
       run: |
-        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PROFILE }} && echo "✅ CMCC_XR30_EMMC_PONLY2410_K66_PROFILE applied successfully!" || { echo "❌ CMCC_XR30_EMMC_PONLY2410_K66_PROFILE failed!"; exit 1; }
-        ${{ secrets.PONLY2410_K66_REPO_DIFF }} && echo "✅ PONLY2410_K66_REPO_DIFF applied successfully!" || { echo "❌ PONLY2410_K66_REPO_DIFF failed!"; exit 1; }
-        ${{ secrets.ARGON_THEME_CMCC }} && echo "✅ ARGON_THEME_CMCC applied successfully!" || { echo "❌ ARGON_THEME_CMCC failed!"; exit 1; }
+        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PROFILE }}
+        ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+        ${{ secrets.ARGON_THEME_CMCC }}
 
     - name: Restore Config Archive (設定アーカイブの復元)
       if: steps.loadconfig.outcome == 'success' && (github.event.inputs.restore_config == 'true' || contains(github.event.action, 'restore_config')) && !cancelled()
       working-directory: ./openwrt
       run: |
         rm -rf files
-        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE }} && echo "✅ CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE applied successfully!" || { echo "❌ CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE failed!"; exit 1; }
+        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE }}
         echo "OUTPUT_FILE=annawrt-24.10-k6.6-mt7981b-cmcc_xr30-emmc-configured-sysupgrade" >> $GITHUB_ENV
 
     - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
