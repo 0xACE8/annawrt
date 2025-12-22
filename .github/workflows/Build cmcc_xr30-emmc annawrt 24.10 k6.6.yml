@@ -30,8 +30,8 @@ on:
         description: 'Upload to Release　　 🇯🇵 Releaseに公開'
         type: boolean
         default: false
-#  schedule:
-#    - cron: '0 19 * * 0'
+  schedule:
+    - cron: '0 19 * * 0'
 
 env:
   # annawrt 2410
@@ -55,8 +55,6 @@ env:
   PLUGIN_REPO_SLUG:                     ${{ secrets.PLUGIN_REPO_SLUG }}
   PLUGIN_REPO_HEAD:                     ${{ secrets.PLUGIN_REPO_HEAD }}
   PLUGIN_REPO_FLOW:                     ${{ secrets.PLUGIN_REPO_FLOW }}
-  # remove all CN mirror
-  MIRRORS_LIST_URL:                     ${{ secrets.MIRRORS_LIST_URL }} 
   # cmcc color sytle for argon
   ARGON_THEME_CMCC:                     ${{ secrets.ARGON_THEME_CMCC }}
   # telegram bot
@@ -226,10 +224,6 @@ jobs:
       run: |
         df -hT $PWD
         git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
-        cd openwrt
-        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PATCHES }}
-        ${{ secrets.ADD_EXTRA_SOURCE }}
-        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
         # Remove China Mirrors (中国国内ミラーの削除)
         PROJECT_MIRRORS_FILE="scripts/projectsmirrors.json"
@@ -242,11 +236,13 @@ jobs:
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]
-        prefix: ${{ env.OPENWRT_PATH }}
+        prefix: ${{ github.workspace }}/openwrt
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
       run: |
+        ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PATCHES }}
+        ${{ secrets.ADD_EXTRA_SOURCE }}
         ./scripts/feeds update -a
         rm -rf feeds/packages/lang/golang
         git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
@@ -258,6 +254,7 @@ jobs:
       id: loadconfig
       run: |
         ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PROFILE }}
+        rm -rf files
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
         ${{ secrets.ARGON_THEME_CMCC }}
 
@@ -265,15 +262,8 @@ jobs:
       if: steps.loadconfig.outcome == 'success' && (github.event.inputs.restore_config == 'true' || contains(github.event.action, 'restore_config')) && !cancelled()
       working-directory: ./openwrt
       run: |
-        rm -rf files
         ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE }}
         echo "OUTPUT_FILE=annawrt-24.10-k6.6-mt7981b-cmcc_xr30-emmc-configured-sysupgrade" >> $GITHUB_ENV
-
-    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
-      if: steps.loadconfig.outcome == 'success' && !cancelled()
-      working-directory: ./openwrt
-      run: |
-        ${{ secrets.BOOST_5G_TO_25DBM }}
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
@@ -284,6 +274,12 @@ jobs:
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
+
+    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
+      if: steps.loadconfig.outcome == 'success' && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.BOOST_5G_TO_25DBM }}
 
     - name: Compile Firmware (ファームウェアのコンパイル)
       working-directory: ./openwrt
@@ -303,8 +299,51 @@ jobs:
 
     - name: Notify Compilation Error (コンパイルエラーの通知)
       if: steps.compile.outcome != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
+      env:
+        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
+        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
+        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
+        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
       run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=❌%20コンパイルに失敗しました！%20❌%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🖥️対応機種:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💿容量仕様:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🐧カーネル:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・👤ソース名:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌲ソース元:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌿ブランチ:%0A　%20　${{ secrets.PONLY2410_K66_REPO_HEAD }}%0Aーーーーーーーーーーーーーーーーー%0A・❌エラーの時間:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
+        if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
+            STAT_RESTORE="✅"
+        else
+            STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
+            STAT_ARTIFACT="✅"
+        else
+            STAT_ARTIFACT="⏺️"
+        fi
+        if [[ "$INPUT_RELEASE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_release"* ]]; then
+            STAT_RELEASE="✅"
+        else
+            STAT_RELEASE="⏺️"
+        fi
+        MSG="❌ ビルドが失敗しました！ ❌"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+
+        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
+        MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
+        
+        MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
+        MSG="${MSG}%0A•❌失敗時刻:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')"
+        MSG="${MSG}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+
+        FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
+
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="${FINAL_MSG}"
 
     - name: Organize Files (ファイルの整理)
       id: organize
@@ -323,11 +362,6 @@ jobs:
       with:
         name: ${{ env.OUTPUT_FILE }}
         path: ${{ env.FIRMWARE }}
-
-    - name: Notify Compilation Success (コンパイル成功の通知)
-      if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
-      run: |
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage?chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=✅%20コンパイルが成功しました！%20✅%0A%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A・🖥️対応機種:%0A　%20　${{ env.DEVICE_NAME }}%0Aーーーーーーーーーーーーーーーーー%0A・💿容量仕様:%0A　%20　${{ env.TARGET_DISK }}%0Aーーーーーーーーーーーーーーーーー%0A・🐧カーネル:%0A　%20　${{ env.KERNEL_VERS }}%0Aーーーーーーーーーーーーーーーーー%0A・👤ソース名:%0A　%20　${{ env.SOURCE_CODE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌲ソース元:%0A　%20　${{ secrets.PONLY2410_K66_REPO_TREE }}%0Aーーーーーーーーーーーーーーーーー%0A・🌿ブランチ:%0A　%20　${{ secrets.PONLY2410_K66_REPO_HEAD }}%0Aーーーーーーーーーーーーーーーーー%0A・📦ファイル:%0A　%20　${{ env.OUTPUT_FILE}}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝%0A"
 
     - name: Upload to Release (Releaseに公開)
       if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
@@ -404,6 +438,55 @@ jobs:
             }
           }
 
+    - name: Final Report & TG Notify (総合ステータス通知)
+      if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
+      env:
+        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
+        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
+        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
+        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+      run: |
+        if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
+            STAT_RESTORE="✅"
+        else
+            STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
+            STAT_ARTIFACT="✅"
+        else
+            STAT_ARTIFACT="⏺️"
+        fi
+        if [[ "$INPUT_RELEASE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_release"* ]]; then
+            STAT_RELEASE="✅"
+        else
+            STAT_RELEASE="⏺️"
+        fi
+
+        MSG="✅ビルドが正常に完了しました！✅"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+
+        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
+        MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
+        
+        MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•📦ファイル:%0A　%20　${OUTPUT_FILE}"
+        MSG="${MSG}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+
+        FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
+
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="${FINAL_MSG}"
+
     - name: Delete Old Workflows (古いワークフローの削除)
       uses: actions/github-script@v7
       with:
@@ -444,7 +527,7 @@ jobs:
 
     - name: Delete Old Releases (古いリリースの削除)
       uses: actions/github-script@v7
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
       with:
         github-token: ${{ env.GH_TOKEN }}
         script: |
@@ -459,3 +542,4 @@ jobs:
               await github.rest.git.deleteRef({ owner, repo, ref: `tags/${release.tag_name}` });
             } catch (e) {}
           }
+    
