@@ -244,16 +244,24 @@ jobs:
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
 
-    - name: Cleanup Cache (如有必要清理缓存)
-      if: github.event.inputs.clean_cache == 'true'
+    - name: Prepare Cache Key (キャッシュキーの准备)
       run: |
-        echo "CLEAN_MARK=$(date +%s)" >> $GITHUB_ENV
+        # 1. 生成日期变量（用于每月/每日自动刷新）
+        echo "CACHE_MONTH=$(date +%Y%m)" >> $GITHUB_ENV
+        
+        # 2. 处理手动清理逻辑
+        # 如果勾选了 clean_cache，就生成一个唯一的随机时间戳，强制让 mixkey 失效
+        if [ "${{ github.event.inputs.clean_cache }}" = "true" ]; then
+            echo "CLEAN_MARK=_clean_$(date +%s)" >> $GITHUB_ENV
+        else
+            echo "CLEAN_MARK=" >> $GITHUB_ENV
+        fi
 
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: true
-        mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
+        mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ env.CACHE_MONTH }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Cache dl Directory (dlディレクトリのキャッシュ)
