@@ -14,29 +14,29 @@ name: Build cmcc_xr30-emmc annawrt 24.10 kernel 6.6 addons actions.
 on:
   workflow_dispatch:
     inputs:
-      clean_ccache:
-        description: 'Clean all old CCACHE   🇯🇵 CCACHEに削除'
-        required: false
+      restore_config:
+        description: 'Restore Configuration  🇯🇵 設定を復元'
         type: boolean
         default: false
       boost_wifi_5g:
         description: 'Boost Wi-Fi 5G Signal  🇯🇵 5G信号の増幅'
         type: boolean
         default: false
-      restore_config:
-        description: 'Restore Configuration  🇯🇵 設定を復元'
-        type: boolean
-        default: false
-      telegram_notify:
-        description: 'Telegram Notification  🇯🇵 Telegram通知'
-        type: boolean
-        default: true
       upload_firmware:
         description: 'Upload FW to Artifacts 🇯🇵 Artifactに保存'
         type: boolean
         default: false
       upload_release:
         description: 'Upload FW to Release　 🇯🇵 Releaseに公開'
+        type: boolean
+        default: false
+      telegram_notify:
+        description: 'Telegram Notification  🇯🇵 Telegram通知'
+        type: boolean
+        default: true
+      clean_ccache:
+        description: 'Clean all old CCACHE   🇯🇵 CCACHEに削除'
+        required: false
         type: boolean
         default: false
   schedule:
@@ -73,6 +73,12 @@ env:
   # telegram bot
   TELEGRAM_BOT_KEY:                     ${{ secrets.TELEGRAM_BOT_KEY }}
   TELEGRAM_CHAT_ID:                     ${{ secrets.TELEGRAM_CHAT_ID }}
+  # input status
+  INPUT_RESTORE:                        ${{ github.event.inputs.restore_config }}
+  INPUT_BOOST5G:                        ${{ github.event.inputs.boost_wifi_5g }}
+  INPUT_ARTIFACT:                       ${{ github.event.inputs.upload_firmware }}
+  INPUT_RELEASE:                        ${{ github.event.inputs.upload_release }}
+  INPUT_CLEANCACHE:                     ${{ github.event.inputs.clean_ccache }}
   # hardware & repo info
   DEVICE_NAME:                          CMCC_XR30-eMMC
   TARGET_CHIP:                          mt7981b
@@ -333,17 +339,16 @@ jobs:
 
     - name: Notify Compilation Error (コンパイルエラーの通知)
       if: steps.compile.outcome != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
-      env:
-        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
-        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
-        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
-        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
-        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
       run: |
         if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
             STAT_RESTORE="✅"
         else
             STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_BOOST5G" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"boost_wifi_5g"* ]]; then
+            STAT_BOOST5G="✅"
+        else
+            STAT_BOOST5G="⏺️"
         fi
         if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
             STAT_ARTIFACT="✅"
@@ -355,19 +360,26 @@ jobs:
         else
             STAT_RELEASE="⏺️"
         fi
+        if [[ "$INPUT_CLEANCACHE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"clean_ccache"* ]]; then
+            STAT_CLEANCACHE="✅"
+        else
+            STAT_CLEANCACHE="⏺️"
+        fi
         MSG="❌ ビルドが失敗しました！ ❌"
         MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
         MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
         MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
         MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
-        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
-        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${PONLY2410_K66_REPO_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${PONLY2410_K66_REPO_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•🛜信号増幅:　%20　${STAT_BOOST5G}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
+        MSG="${MSG}%0A•🧹缓存消除:　%20　${STAT_CLEANCACHE}"
         
         MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
         MSG="${MSG}%0A•❌失敗時刻:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')"
@@ -474,17 +486,16 @@ jobs:
 
     - name: Final Report & TG Notify (総合ステータス通知)
       if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
-      env:
-        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
-        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
-        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
-        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
-        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
       run: |
         if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
             STAT_RESTORE="✅"
         else
             STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_BOOST5G" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"boost_wifi_5g"* ]]; then
+            STAT_BOOST5G="✅"
+        else
+            STAT_BOOST5G="⏺️"
         fi
         if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
             STAT_ARTIFACT="✅"
@@ -496,20 +507,26 @@ jobs:
         else
             STAT_RELEASE="⏺️"
         fi
-
+        if [[ "$INPUT_CLEANCACHE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"clean_ccache"* ]]; then
+            STAT_CLEANCACHE="✅"
+        else
+            STAT_CLEANCACHE="⏺️"
+        fi
         MSG="✅ビルドが正常に完了しました！✅"
         MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
         MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
         MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
         MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
-        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
-        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${PONLY2410_K66_REPO_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${PONLY2410_K66_REPO_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•🛜信号増幅:　%20　${STAT_BOOST5G}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
+        MSG="${MSG}%0A•🧹缓存消除:　%20　${STAT_CLEANCACHE}"
         
         MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•📦ファイル:%0A　%20　${OUTPUT_FILE}"
