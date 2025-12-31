@@ -267,13 +267,15 @@ jobs:
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: true
-        mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ env.CACHE_MONTH }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
+        mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Cache dl Directory (dlディレクトリのキャッシュ)
       uses: actions/cache@v3
       with:
-        path: openwrt/dl
+        path: |
+        openwrt/dl
+        !openwrt/dl/go-mod-cache
         key: ${{ runner.os }}-openwrt-dl-${{ hashFiles('**/feeds.conf.default') }}-${{ hashFiles('**/Makefile') }}
         restore-keys: |
           ${{ runner.os }}-openwrt-dl-
