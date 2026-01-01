@@ -273,12 +273,15 @@ jobs:
     - name: Cache dl Directory (dlディレクトリのキャッシュ)
       uses: actions/cache@v3
       with:
-        path: |
-          openwrt/dl
-          !openwrt/dl/go-mod-cache
-        key: ${{ runner.os }}-openwrt-dl-${{ hashFiles('**/feeds.conf.default') }}-${{ hashFiles('**/Makefile') }}
+        path: openwrt/dl
+        key: ${{ runner.os }}-openwrt-dl-v3-${{ hashFiles('**/feeds.conf.default') }}
         restore-keys: |
-          ${{ runner.os }}-openwrt-dl-
+          ${{ runner.os }}-openwrt-dl-v3-
+
+    - name: Surgical Clean Go Cache (Goキャッシュの物理削除)
+      run: |
+        rm -rf openwrt/dl/go-mod-cache
+        mkdir -p openwrt/dl/go-mod-cache
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
