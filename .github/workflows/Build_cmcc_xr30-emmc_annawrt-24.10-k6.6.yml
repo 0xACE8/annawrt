@@ -384,7 +384,7 @@ jobs:
         MSG="${MSG}%0A•🛜信号増幅:　%20　${STAT_BOOST5G}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
-        MSG="${MSG}%0A•🧹缓存消除:　%20　${STAT_CLEANCACHE}"
+        MSG="${MSG}%0A•🧹一時消去:　%20　${STAT_CLEANCACHE}"
         
         MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
         MSG="${MSG}%0A•❌失敗時刻:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')"
@@ -531,7 +531,7 @@ jobs:
         MSG="${MSG}%0A•🛜信号増幅:　%20　${STAT_BOOST5G}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
-        MSG="${MSG}%0A•🧹缓存消除:　%20　${STAT_CLEANCACHE}"
+        MSG="${MSG}%0A•🧹一時消去:　%20　${STAT_CLEANCACHE}"
         
         MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•📦ファイル:%0A　%20　${OUTPUT_FILE}"
