@@ -32,3 +32,11 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/Build_cmcc_xr30-emmc_annawrt-24.10-k6.6.yml/dispatches \
             -d '{"ref":"main"}'
+            
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 0
