@@ -246,10 +246,10 @@ jobs:
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
         git config --global core.compression 0
 
-    #- name: Prepare and Mount Tmpfs
-    #  run: |
-    #      mkdir -p ${{ github.workspace }}/openwrt
-    #      sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
+    - name: Prepare and Mount Tmpfs
+      run: |
+          mkdir -p ${{ github.workspace }}/openwrt
+          sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
 
     - name: Clone Source Code (ソースコードのクローン)
       working-directory: ./
