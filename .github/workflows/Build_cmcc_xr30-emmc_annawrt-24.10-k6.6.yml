@@ -546,43 +546,14 @@ jobs:
           -d text="${FINAL_MSG}"
 
     - name: Delete Old Workflows (古いワークフローの削除)
-      uses: actions/github-script@v7
+      uses: Mattraiano/delete-workflow-runs@v2
       with:
-        github-token: ${{ env.GH_TOKEN }}
-        script: |
-          const { owner, repo } = context.repo;
-          const currentRunId = context.runId;
-          
-          const runs = await github.rest.actions.listWorkflowRunsForRepo({
-            owner, repo, per_page: 1
-          });
-
-          const workflowGroups = {};
-          for (const run of runs.data.workflow_runs) {
-            if (!workflowGroups[run.workflow_id]) workflowGroups[run.workflow_id] = [];
-            workflowGroups[run.workflow_id].push(run);
-          }
-
-          for (const [id, list] of Object.entries(workflowGroups)) {
-            list.sort((a, b) => b.id - a.id);
-            let foundSuccess = false;
-
-            for (const run of list) {
-              if (run.id === currentRunId) continue;
-              if (run.status !== 'completed') continue;
-
-              if (!foundSuccess && run.conclusion === 'success') {
-                console.log(`✅ Keep last success: ${run.name} (#${run.run_number})`);
-                foundSuccess = true;
-                continue;
-              }
-              try {
-                await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: run.id });
-                console.log(`👋 Delete: ${run.name} (#${run.run_number})`);
-              } catch (e) {}
-            }
-          }
-
+        token: ${{ github.token }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 1
+        workflow_id: Build_cmcc_xr30-emmc_annawrt-24.10-k6.6.yml
+ 
     - name: Delete Old Releases (古いリリースの削除)
       uses: actions/github-script@v7
       if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
