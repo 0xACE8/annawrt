@@ -548,7 +548,7 @@ jobs:
     - name: Delete Old Workflows (古いワークフローの削除)
       uses: Mattraiano/delete-workflow-runs@v2
       with:
-        token: ${{ github.token }}
+        token: ${{ secrets.ACCESS_TOKEN }}
         repository: ${{ github.repository }}
         retain_days: 0
         keep_minimum_runs: 1
