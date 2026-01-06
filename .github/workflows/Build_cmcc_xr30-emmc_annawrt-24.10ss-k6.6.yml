@@ -231,11 +231,19 @@ jobs:
 
     - name: Prepare Storage and Links
       run: |
-        mkdir -p ${{ github.workspace }}/dl
-        mkdir -p ${{ github.workspace }}/.ccache
+        # 1. 挂载 Tmpfs
         mkdir -p ${{ github.workspace }}/openwrt
         sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
         sudo chown $USER:$USER ${{ github.workspace }}/openwrt
+        
+        # 2. 【核心修复】全局信任所有目录，防止文件系统边界报错
+        git config --global --add safe.directory "*"
+        
+        # 3. 创建 SSD 上的持久化目录
+        mkdir -p ${{ github.workspace }}/dl
+        mkdir -p ${{ github.workspace }}/.ccache
+        
+        # 4. 建立软链接
         ln -s ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
         ln -s ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
 
