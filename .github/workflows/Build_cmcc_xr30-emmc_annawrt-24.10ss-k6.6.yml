@@ -231,18 +231,11 @@ jobs:
 
     - name: Prepare Storage and Links
       run: |
-        # 1. 在 SSD (工作区) 创建持久化目录
         mkdir -p ${{ github.workspace }}/dl
         mkdir -p ${{ github.workspace }}/.ccache
-        
-        # 2. 挂载 12G 内存盘到 openwrt 编译目录
         mkdir -p ${{ github.workspace }}/openwrt
         sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
-        
-        # 3. 再次进入 openwrt 目录执行必要的初始化 (如 Clone)
-        # 注意：如果你已经 Clone 过了，记得把源码移进内存盘或者重新 Clone
-        
-        # 4. 关键：建立软链接，将大流量、大体积目录指向 SSD
+        sudo chown $USER:$USER ${{ github.workspace }}/openwrt
         ln -s ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
         ln -s ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
 
@@ -261,6 +254,7 @@ jobs:
 
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
+      env: GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
