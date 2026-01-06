@@ -210,18 +210,12 @@ jobs:
         rustup target add aarch64-unknown-linux-musl
         sudo -E systemctl daemon-reload
         sudo timedatectl set-timezone "$TZ"
-        timedatectl
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
 
     - name: Setup Git Credentials (Git認証情報の設定)
       run: |
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
         git config --global core.compression 0
-
-    - name: Prepare and Mount Tmpfs
-      run: |
-          mkdir -p ${{ github.workspace }}/openwrt
-          sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
 
     - name: Clone Source Code (ソースコードのクローン)
       working-directory: ./
@@ -234,6 +228,23 @@ jobs:
           if [ -f "$PROJECT_MIRRORS_FILE" ]; then
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
+
+    - name: Prepare Storage and Links
+      run: |
+        # 1. 在 SSD (工作区) 创建持久化目录
+        mkdir -p ${{ github.workspace }}/dl
+        mkdir -p ${{ github.workspace }}/.ccache
+        
+        # 2. 挂载 12G 内存盘到 openwrt 编译目录
+        mkdir -p ${{ github.workspace }}/openwrt
+        sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
+        
+        # 3. 再次进入 openwrt 目录执行必要的初始化 (如 Clone)
+        # 注意：如果你已经 Clone 过了，记得把源码移进内存盘或者重新 Clone
+        
+        # 4. 关键：建立软链接，将大流量、大体积目录指向 SSD
+        ln -s ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
+        ln -s ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
 
     - name: Prepare Cache Key (キャッシュキーの准备)
       run: |
@@ -314,8 +325,15 @@ jobs:
     - name: Compile Firmware (ファームウェアのコンパイル)
       working-directory: ./openwrt
       id: compile
+      continue-on-error: true
+      env:
+        CCACHE_DIR: ${{ github.workspace }}/.ccache
+        USE_CCACHE: 1
       run: |
+        echo -e "$(nproc) thread compile"
+        ccache -z
         make -j$(nproc) || make -j1 V=s
+        ccache -s
         echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: Update Variables (変数の更新)
@@ -403,10 +421,6 @@ jobs:
     - name: Upload to Release (Releaseに公開)
       if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
       uses: actions/github-script@v7
-      env:
-        REPO_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
-        REPO_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
-        GITHUB_TOKEN: ${{ env.GH_TOKEN }}
       with:
         github-token: ${{ env.GH_TOKEN }}
         script: |
