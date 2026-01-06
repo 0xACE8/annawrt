@@ -217,35 +217,32 @@ jobs:
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
         git config --global core.compression 0
 
+    - name: Prepare Storage and Links
+      run: |
+        # 创建一个空目录并挂载
+        mkdir -p ${{ github.workspace }}/openwrt
+        sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
+        sudo chown $USER:$USER ${{ github.workspace }}/openwrt
+        
+        # 预先创建 SSD 上的持久化目录
+        mkdir -p ${{ github.workspace }}/dl
+        mkdir -p ${{ github.workspace }}/.ccache
+        
+        # 建立软链接（此时 openwrt 里是空的）
+        ln -s ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
+        ln -s ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
+
     - name: Clone Source Code (ソースコードのクローン)
       working-directory: ./
       run: |
         df -hT $PWD
-        git clone --depth 1 $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
+        git clone --depth 1 $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD ${{ github.workspace }}/openwrt
 
         # Remove China Mirrors (中国国内ミラーの削除)
         PROJECT_MIRRORS_FILE="scripts/projectsmirrors.json"
           if [ -f "$PROJECT_MIRRORS_FILE" ]; then
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
-
-    - name: Prepare Storage and Links
-      run: |
-        # 1. 挂载 Tmpfs
-        mkdir -p ${{ github.workspace }}/openwrt
-        sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
-        sudo chown $USER:$USER ${{ github.workspace }}/openwrt
-        
-        # 2. 【核心修复】全局信任所有目录，防止文件系统边界报错
-        git config --global --add safe.directory "*"
-        
-        # 3. 创建 SSD 上的持久化目录
-        mkdir -p ${{ github.workspace }}/dl
-        mkdir -p ${{ github.workspace }}/.ccache
-        
-        # 4. 建立软链接
-        ln -s ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
-        ln -s ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
 
     - name: Prepare Cache Key (キャッシュキーの准备)
       run: |
