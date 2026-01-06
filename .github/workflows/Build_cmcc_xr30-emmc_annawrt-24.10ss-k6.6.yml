@@ -178,27 +178,6 @@ jobs:
         df -hT
         echo "=============================================================================="
 
-    - name: Optimize Disk Space (ディスク容量の最適化)
-      uses: hugoalh/disk-space-optimizer-ghaction@v0.8.1
-      with:
-        operate_sudo: "True"
-        general_include: ".+"
-        general_exclude: |-
-          ^GCC$
-          ^G\+\+$
-          Clang
-          LLVM
-        docker_include: ".+"
-        docker_prune: "True"
-        docker_clean: "True"
-        apt_prune: "True"
-        apt_clean: "True"
-        homebrew_prune: "True"
-        homebrew_clean: "True"
-        npm_prune: "True"
-        npm_clean: "True"
-        os_swap: "True"
-
     - name: Free Disk Space (ディスク空き容量の確保)
       uses: easimon/maximize-build-space@master
       with: 
@@ -234,9 +213,9 @@ jobs:
         sudo -E apt -yqq autoremove --purge
         sudo -E apt -yqq autoclean
         sudo -E apt -yqq clean
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev cargo libncurses5-dev libxcrypt-dev build-essential
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
         rustup target add aarch64-unknown-linux-musl
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev cargo libncurses5-dev libxcrypt-dev build-essential
         sudo -E systemctl daemon-reload
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
