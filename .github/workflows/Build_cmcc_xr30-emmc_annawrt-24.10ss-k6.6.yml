@@ -15,27 +15,27 @@ on:
   workflow_dispatch:
     inputs:
       restore_config:
-        description: 'Restore Configuration　🇯🇵 設定を復元'
+        description: 'Restore Configuration. 🇯🇵 設定を復元'
         type: boolean
         default: false
       boost_wifi_5g:
-        description: 'Boost Wi-Fi 5G Signal　🇯🇵 5G信号の増幅'
+        description: 'Boost Wi-Fi 5G Signal. 🇯🇵 5G信号の増幅'
         type: boolean
         default: false
       upload_firmware:
-        description: 'Upload to Artifacts　　🇯🇵 Artifactに保存'
+        description: 'Upload to Artifacts... 🇯🇵 Artifactに保存'
         type: boolean
         default: false
       upload_release:
-        description: 'Upload to Releases　　 🇯🇵 Releaseに公開'
+        description: 'Upload to Releases.... 🇯🇵 Releaseに公開'
         type: boolean
         default: false
       telegram_notify:
-        description: 'Telegram Notification　🇯🇵 Telegram通知'
+        description: 'Telegram Notification. 🇯🇵 Telegram通知'
         type: boolean
         default: true
       clean_ccache:
-        description: 'Clean all old CCACHE　 🇯🇵 CCACHEに削除'
+        description: 'Clean all old CCACHE.. 🇯🇵 CCACHEに削除'
         required: false
         type: boolean
         default: false
@@ -79,14 +79,6 @@ env:
   INPUT_ARTIFACT:                       ${{ github.event.inputs.upload_firmware }}
   INPUT_RELEASE:                        ${{ github.event.inputs.upload_release }}
   INPUT_CLEANCACHE:                     ${{ github.event.inputs.clean_ccache }}
-  # ccache
-  CCACHE_DIR:                           ${{ github.workspace }}/openwrt/.ccache
-  CCACHE_MAXSIZE:                       5G
-  CCACHE_COMPRESS:                      "1"
-  CCACHE_COMPRESSLEVEL:                 "6"
-  CCACHE_BASEDIR:                       ${{ github.workspace }}
-  CCACHE_HASHDIR:                       "false"
-  USE_CCACHE:                           "1"
   # hardware & repo info
   DEVICE_NAME:                          CMCC_XR30-eMMC
   TARGET_CHIP:                          mt7981b
@@ -94,7 +86,7 @@ env:
   SOURCE_CODE:                          padavanonly
   KERNEL_VERS:                          kernel_6.6
   OUTPUT_FILE:                          annawrt-24.10-k6.6-mt7981b-cmcc_xr30-emmc-sysupgrade
-  TZ: "Asia/Tokyo"
+  TZ: Asia/Tokyo
 
 jobs:
   build:
@@ -214,10 +206,11 @@ jobs:
         sudo -E apt -yqq autoclean
         sudo -E apt -yqq clean
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev cargo
         rustup target add aarch64-unknown-linux-musl
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev cargo libncurses5-dev libxcrypt-dev build-essential
         sudo -E systemctl daemon-reload
         sudo timedatectl set-timezone "$TZ"
+        timedatectl
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
 
     - name: Setup Git Credentials (Git認証情報の設定)
