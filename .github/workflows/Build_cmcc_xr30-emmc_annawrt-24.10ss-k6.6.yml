@@ -254,7 +254,8 @@ jobs:
 
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
-      env: GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
+      env: 
+        GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
