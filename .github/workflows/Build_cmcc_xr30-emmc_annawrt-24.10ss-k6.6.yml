@@ -217,38 +217,37 @@ jobs:
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
         git config --global core.compression 0
 
-    - name: Clone Source Code (ソースコードのクローン)
-      working-directory: ./
+    - name: Checkout and Prepare Hybrid Storage (手动初始化)
       run: |
-        df -hT $PWD
-        git clone --depth 1 $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
-
+        # 1. 准备目录结构
+        mkdir -p ${{ github.workspace }}/openwrt
+        mkdir -p ${{ github.workspace }}/dl
+        mkdir -p ${{ github.workspace }}/.ccache
+        
+        # 2. 挂载 12G 内存盘
+        sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
+        sudo chown $USER:$USER ${{ github.workspace }}/openwrt
+        
+        # 3. 【核心修正】进入挂载目录，手动“原地”拉取代码
+        # 这招绝对不会报 "destination path already exists"
+        cd ${{ github.workspace }}/openwrt
+        git init
+        git remote add origin $PONLY2410_K66_REPO_LINK
+        git fetch --depth 1 origin $PONLY2410_K66_REPO_HEAD
+        git checkout FETCH_HEAD
+        
         # Remove China Mirrors (中国国内ミラーの削除)
         PROJECT_MIRRORS_FILE="scripts/projectsmirrors.json"
           if [ -f "$PROJECT_MIRRORS_FILE" ]; then
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
-
-    - name: Prepare Storage and Links
-      run: |
-        # 1. 挂载 12G 内存盘
-        mkdir -p ${{ github.workspace }}/openwrt
-        sudo mount -t tmpfs -o size=12G tmpfs ${{ github.workspace }}/openwrt
-        sudo chown $USER:$USER ${{ github.workspace }}/openwrt
-
-        # 2. 核心：把 .git 目录从 workspace 拷贝到内存盘中
-        # 这样 Git 就不会觉得是在“跨文件系统”操作了
-        cp -rp ${{ github.workspace }}/.git ${{ github.workspace }}/openwrt/
         
-        # 3. 补全内存盘里的源码（除了已有的 .git，其余的都链接或检出）
-        cd ${{ github.workspace }}/openwrt
-        git checkout .  # 这一步会根据内存里的 .git 瞬间把源码还原到内存盘
-
-        # 4. 建立 SSD 软链接
-        mkdir -p ${{ github.workspace }}/dl
-        mkdir -p ${{ github.workspace }}/.ccache
-        ln -s ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
-        ln -s ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
+        # 4. 建立软链接 (此时源码已在内存盘，且 .git 也在其中)
+        ln -sf ${{ github.workspace }}/dl ${{ github.workspace }}/openwrt/dl
+        ln -sf ${{ github.workspace }}/.ccache ${{ github.workspace }}/openwrt/.ccache
+        
+        # 5. 安全配置 (双保险)
+        git config --global --add safe.directory "*"
 
     - name: Prepare Cache Key (キャッシュキーの准备)
       run: |
@@ -265,8 +264,6 @@ jobs:
 
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
-      env: 
-        GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
