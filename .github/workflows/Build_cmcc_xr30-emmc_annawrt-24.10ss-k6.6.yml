@@ -271,16 +271,16 @@ jobs:
         ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_ARCHIVE }}
         echo "OUTPUT_FILE=annawrt-24.10-k6.6-mt7981b-cmcc_xr30-emmc-configured-sysupgrade" >> $GITHUB_ENV
 
-    - name: Optimization & CCache Configuration
-      working-directory: ./openwrt
-      run: |
-        echo "CONFIG_CCACHE_DIR=\"${{ github.workspace }}/.ccache\"" >> .config
-        export CCACHE_DIR=${{ github.workspace }}/.ccache
-        export CCACHE_BASEDIR=${{ github.workspace }}
-        export CCACHE_COMPRESS=1
-        export CCACHE_COMPRESSLEVEL=6
-        ccache -M 5G
-        ccache -z
+    #- name: Optimization & CCache Configuration
+    #  working-directory: ./openwrt
+    #  run: |
+    #    echo "CONFIG_CCACHE_DIR=\"${{ github.workspace }}/.ccache\"" >> .config
+    #    export CCACHE_DIR=${{ github.workspace }}/.ccache
+    #    export CCACHE_BASEDIR=${{ github.workspace }}
+    #    export CCACHE_COMPRESS=1
+    #    export CCACHE_COMPRESSLEVEL=6
+    #    ccache -M 5G
+    #    ccache -z
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
@@ -305,6 +305,9 @@ jobs:
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 V=s
         echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Update Variables (変数の更新)
+      run: |
         echo "OUTPUT_FILE=${OUTPUT_FILE}_${FILE_DATE}" >> $GITHUB_ENV
 
     - name: Notify Compilation Error (コンパイルエラーの通知)
