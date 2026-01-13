@@ -134,22 +134,26 @@ jobs:
         github.event.schedule == '0 0 1 * *'
       shell: bash
       run: |
-        KEYWORDS=(
-          "${{ runner.os }}-openwrt-dl-v3-"
-          "MT7981b-[${{ env.CACHE_MONTH }}]"
-        )
+        KEY1="${{ runner.os }}-openwrt-dl-v3-"
+        KEY2="MT7981b-[${{ env.CACHE_MONTH }}]"
 
-        for KEY in "${KEYWORDS[@]}"; do
-          gh cache list -R ${{ github.repository }} --limit 100 | grep -F "$KEY" | cut -f 1 | while read -r cache_id; do
-            if [ -n "$cache_id" ]; then
-              gh cache delete "$cache_id" -R ${{ github.repository }} || true
+        for KEY in "$KEY1" "$KEY2"; do
+          echo "🔍 🇯🇵 検索中: $KEY"
+          
+          # 1. 获取所有缓存列表
+          # 2. 使用 grep -F (固定字符串模式) 匹配关键词
+          # 3. awk '{print $1}' 提取第一列的 Key
+          CACHES=$(gh cache list -R ${{ github.repository }} --limit 100 | grep -F "$KEY" | awk '{print $1}')
+          
+          for cache_key in $CACHES; do
+            if [ -n "$cache_key" ]; then
+              echo "🗑️ 🇯🇵 削除中: $cache_key"
+              gh cache delete "$cache_key" -R ${{ github.repository }} || true
             fi
           done
         done
         
-        echo "✨ クリーンアップ完了！"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        echo "✨ 🇯🇵 クリーンアップ完了！"
 
     - name: Free Disk Space (ディスク空き容量の確保)
       uses: easimon/maximize-build-space@master
