@@ -235,13 +235,26 @@ jobs:
           openwrt/staging_dir/host
           openwrt/staging_dir/tool*
 
-    - name: Fake Timestamps (黑科技：伪造时间戳)
-      if: steps.cache-toolchain.outputs.cache-matched-key != ''
+- name: Fake Timestamps (黑科技：伪造时间戳)
+      # 使用 always() 确保即便之前的 cache 步骤有警告也能运行
+      # 移除严格的 if 变量判断，改在 run 里面用 shell 做物理判断
+      if: always()
       working-directory: ./openwrt
       run: |
-        echo "🕒 正在欺骗编译器，跳过工具链校验..."
-        find staging_dir -type d -name "stamp" -not -path "*target*" -exec touch {} + 2>/dev/null || true
-        mkdir -p tmp && echo "1" > tmp/.build
+        # 物理检查：判断工具链核心目录是否存在
+        if [ -d "staging_dir/host" ]; then
+          echo "✅ 发现工具链目录，正在执行时间戳伪造..."
+          
+          # 1. 伪造 stamp 文件，跳过编译校验
+          find staging_dir -type d -name "stamp" -not -path "*target*" -exec touch {} + 2>/dev/null || true
+          
+          # 2. 伪造编译状态标记
+          mkdir -p tmp && echo "1" > tmp/.build
+          
+          echo "🚀 时间戳伪造完成，编译器将被‘欺骗’直接进入下一阶段。"
+        else
+          echo "❌ 未发现恢复的工具链目录，将进行完整编译。"
+        fi
 
     - name: Restore Config Archive (設定アーカイブの復元)
       if: steps.loadconfig.outcome == 'success' && env.INPUT_RESTORE == 'true'
@@ -340,7 +353,7 @@ jobs:
         
         [ "${{ steps.compile.outcome }}" == "success" ] && BUILD_STAT="✅ビルドが正常に完了しました！✅" || BUILD_STAT="❌ ビルドが失敗しました！ ❌"
         
-        STAT_LIST="•⚙️%20配置复元:　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
         STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
         STAT_LIST="${STAT_LIST}•💾%20构建成果:　%20　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
         STAT_LIST="${STAT_LIST}•🚀%20公开配信:　%20　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
