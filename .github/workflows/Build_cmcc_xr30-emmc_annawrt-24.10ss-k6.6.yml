@@ -40,7 +40,6 @@ on:
         default: false
       clean_cache:
         description: 'Clean all old CACHE... 🇯🇵 CACHEを削除'
-        required: false
         type: boolean
         default: false
   schedule:
@@ -128,7 +127,11 @@ jobs:
       uses: actions/checkout@main
       with:
         fetch-depth: 0
-
+        
+    - name: Test Logic
+      if: true || false
+      run: echo "这行绝对会输出，因为只要有一个是 true 就行"
+      
     - name: Clean Up All Old Caches (全ての旧キャッシュを削除)
       if: |
         github.event.inputs.clean_ccache == 'true' || 
