@@ -235,7 +235,7 @@ jobs:
           openwrt/staging_dir/host
           openwrt/staging_dir/tool*
 
-- name: Fake Timestamps (黑科技：伪造时间戳)
+    - name: Fake Timestamps (黑科技：伪造时间戳)
       # 使用 always() 确保即便之前的 cache 步骤有警告也能运行
       # 移除严格的 if 变量判断，改在 run 里面用 shell 做物理判断
       if: always()
