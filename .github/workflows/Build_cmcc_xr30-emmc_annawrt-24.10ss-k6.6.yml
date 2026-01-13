@@ -40,6 +40,7 @@ on:
         default: false
       clean_cache:
         description: 'Clean all old CACHE... 🇯🇵 CACHEを削除'
+        required: false
         type: boolean
         default: false
   schedule:
@@ -101,6 +102,7 @@ jobs:
     - name: Start Timer (計測開始)
       run: |
         echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+        echo "CACHE_MONTH=$(date +%Y%m)" >> $GITHUB_ENV
 
     - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
       run: |
@@ -131,29 +133,19 @@ jobs:
     - name: Clean Up All Old Caches (全ての旧キャッシュを削除)
       if: |
         github.event.inputs.clean_cache == 'true' || 
-        github.event.schedule == '0 0 1 * *'
+        github.event.schedule == '0 0 1 * *' ||
       shell: bash
       run: |
-        KEYWORDS=("${{ runner.os }}-openwrt-dl-v3-" "MT7981b-[${{ env.CACHE_MONTH }}]")
+        KEYS=("${{ runner.os }}-openwrt-dl-v3-" "MT7981b-[${{ env.CACHE_MONTH }}]")
 
-        for KEY in "${KEYWORDS[@]}"; do
-          echo "🔍 🇯🇵 検索中: $KEY"
-          
-          # 使用 JSON 格式获取所有缓存，这种方式在找不到缓存时不会报错
-          # 通过 jq 过滤出包含关键字的 Key
-          CACHES=$(gh cache list -R ${{ github.repository }} --limit 100 --json key -q ".[].key" | grep -F "$KEY" || true)
-
-          if [ -n "$CACHES" ]; then
-            for cache_key in $CACHES; do
-              echo "🗑️ 🇯🇵 削除中: $cache_key"
-              gh cache delete "$cache_key" -R ${{ github.repository }} || true
-            done
-          else
-            echo "✅ 🇯🇵 削除対象のキャッシュは見つかりませんでした。"
-          fi
+        for KEY in "${KEYS[@]}"; do
+          CACHES=$(gh cache list -R ${{ github.repository }} --limit 100 --json key -q ".[].key" 2>/dev/null | grep -F "$KEY" || true)
+          for cache_key in $CACHES; do
+            gh cache delete "$cache_key" -R ${{ github.repository }} || true
+          done
         done
-        
-        echo "✨ 🇯🇵 すべてのクリーンアップ処理が完了しました！"
+
+        echo "✨ すべてのクリーンアップ処理が完了しました！"
 
     - name: Free Disk Space (ディスク空き容量の確保)
       uses: easimon/maximize-build-space@master
@@ -200,7 +192,7 @@ jobs:
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: stupidloud/cachewrtbuild@main
       with:
-        ccache: true
+        cache: true
         toolchain: true
         skip: true
         mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
@@ -244,7 +236,7 @@ jobs:
         ${{ secrets.ARGON_THEME_CMCC }}
 
         # Check CCACHE Status (CCACHEステータスの確認)
-        ccache -s
+        cache -s
 
     - name: Restore Config Archive (設定アーカイブの復元)
       if: steps.loadconfig.outcome == 'success' && env.INPUT_RESTORE == 'true'
@@ -266,8 +258,8 @@ jobs:
     - name: Keepalive Cache Refresh (キャッシュ更新のマーク付け)
       if: env.IS_KEEPALIVE == 'true'
       run: |
-        mkdir -p openwrt/.ccache
-        date > openwrt/.ccache/keepalive_timestamp
+        mkdir -p openwrt/.cache
+        date > openwrt/.cache/keepalive_timestamp
         echo "✅ キャッシュ更新のフラグ設定。フルビルドはスキップされました。"
 
     - name: Compile Firmware (ファームウェアのコンパイル)
@@ -284,8 +276,8 @@ jobs:
       run: |
         # Update Variables (変数の更新)
         echo "OUTPUT_FILE=${OUTPUT_FILE}_${FILE_DATE}" >> $GITHUB_ENV
-        ccache -p
-        ccache -s
+        cache -p
+        cache -s
 
     - name: Organize Files (ファイルの整理)
       if: steps.compile.outcome == 'success'
@@ -352,7 +344,7 @@ jobs:
         STAT_LIST="${STAT_LIST}•%20🛜信号增幅:　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
         STAT_LIST="${STAT_LIST}•%20💾构建成果:　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
         STAT_LIST="${STAT_LIST}•%20🚀公开配信:　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
-        STAT_LIST="${STAT_LIST}•%20🧹缓存清理:　%20　$(get_stat "${{ github.event.inputs.clean_ccache }}")"
+        STAT_LIST="${STAT_LIST}•%20🧹缓存清理:　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")"
 
         MSG="${BUILD_STAT}%0A"
         MSG="${MSG}%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
@@ -399,7 +391,6 @@ jobs:
           for TAG in $OLD_TAGS; do
             CLEAN_TAG=$(echo $TAG | xargs)
             echo "🗑️ 旧バージョンを削除しています: $CLEAN_TAG"
-        
             gh release delete "$CLEAN_TAG" -R ${{ github.repository }} --yes --cleanup-tag || true
           done
         fi
