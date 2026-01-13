@@ -339,29 +339,29 @@ jobs:
         
         [ "${{ steps.compile.outcome }}" == "success" ] && BUILD_STAT="✅ビルドが正常に完了しました！✅" || BUILD_STAT="❌ ビルドが失敗しました！ ❌"
         
-        STAT_LIST="•%20⚙️配置复元:　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
-        STAT_LIST="${STAT_LIST}•%20🛜信号增幅:　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
-        STAT_LIST="${STAT_LIST}•%20💾构建成果:　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
-        STAT_LIST="${STAT_LIST}•%20🚀公开配信:　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
-        STAT_LIST="${STAT_LIST}•%20🧹缓存清理:　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")"
+        STAT_LIST="•⚙️%20配置复元:　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
+        STAT_LIST="${STAT_LIST}•💾%20构建成果:　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
+        STAT_LIST="${STAT_LIST}•🚀%20公开配信:　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
+        STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")%0A"
 
         MSG="${BUILD_STAT}%0A"
         MSG="${MSG}%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
-        MSG="${MSG}%0A•%20🖥️対応機種:%0A　%20　${DEVICE_NAME}"
-        MSG="${MSG}%0A•%20💿容量仕様:%0A　%20　${TARGET_DISK}"
-        MSG="${MSG}%0A•%20🐧カーネル:%0A　%20　${KERNEL_VERS}"
-        MSG="${MSG}%0A•%20👤ソース名:%0A　%20　${SOURCE_CODE}"
-        MSG="${MSG}%0A•%20🌲ソース元:%0A　%20　${PONLY2410_K66_REPO_TREE}"
-        MSG="${MSG}%0A•%20🌿ブランチ:%0A　%20　${PONLY2410_K66_REPO_HEAD}%0A"
+        MSG="${MSG}%0A•🖥️%20対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿%20容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧%20カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤%20ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲%20ソース元:%0A　%20　${PONLY2410_K66_REPO_TREE}"
+        MSG="${MSG}%0A•🌿%20ブランチ:%0A　%20　${PONLY2410_K66_REPO_HEAD}%0A"
 
-        MSG="${MSG}%0A＝＝＝＝＝ 状 態 一 覧 ＝＝＝＝＝＝%0A${STAT_LIST}%0A%0A"
+        MSG="${MSG}%0A＝＝＝＝＝ 状 態 一 覧 ＝＝＝＝＝＝%0A${STAT_LIST}%0A"
         MSG="${MSG}＝＝＝＝＝ 結 果 情 報 ＝＝＝＝＝＝%0A"
         
         if [ "${{ steps.compile.outcome }}" == "success" ]; then
-          MSG="${MSG}•📦ファイル:%0A　%20　${OUTPUT_FILE}%0A"
-          MSG="${MSG}%0A•⏱️実行時間:　%20　${{ env.DURATION }}%0A"
+          MSG="${MSG}•📦%20ファイル:%0A　%20　${OUTPUT_FILE}%0A"
+          MSG="${MSG}%0A•⏱️%20実行時間:　%20　${{ env.DURATION }}%0A"
         else
-          MSG="${MSG}•❌失敗時刻:　%20　$(date +'%Y-%m-%d %H:%M')%0A"
+          MSG="${MSG}•❌%20失敗時刻:　%20　$(date +'%Y-%m-%d %H:%M')%0A"
         fi
 
         MSG="${MSG}%0A＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ "
