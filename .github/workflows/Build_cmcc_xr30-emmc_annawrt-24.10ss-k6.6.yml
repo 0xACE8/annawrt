@@ -136,24 +136,22 @@ jobs:
       run: |
         KEY1="${{ runner.os }}-openwrt-dl-v3-"
         KEY2="MT7981b-[${{ env.CACHE_MONTH }}]"
-
         for KEY in "$KEY1" "$KEY2"; do
-          echo "🔍 🇯🇵 検索中: $KEY"
+          CACHELIST=$(gh cache list -R ${{ github.repository }} --limit 100 2>/dev/null || true)
           
-          # 1. 获取所有缓存列表
-          # 2. 使用 grep -F (固定字符串模式) 匹配关键词
-          # 3. awk '{print $1}' 提取第一列的 Key
-          CACHES=$(gh cache list -R ${{ github.repository }} --limit 100 | grep -F "$KEY" | awk '{print $1}')
-          
-          for cache_key in $CACHES; do
-            if [ -n "$cache_key" ]; then
-              echo "🗑️ 🇯🇵 削除中: $cache_key"
-              gh cache delete "$cache_key" -R ${{ github.repository }} || true
-            fi
-          done
+          if [ -n "$CACHELIST" ]; then
+            CACHES=$(echo "$CACHELIST" | grep -F "$KEY" | awk '{print $1}')
+           
+            for cache_key in $CACHES; do
+              if [ -n "$cache_key" ]; then
+                gh cache delete "$cache_key" -R ${{ github.repository }} || true
+              fi
+            done
+          else
+            echo "ℹ️ キャッシュが見つかりませんでした。スキップします。"
+          fi
         done
-        
-        echo "✨ 🇯🇵 クリーンアップ完了！"
+        echo "✨ クリーンアップ完了！"
 
     - name: Free Disk Space (ディスク空き容量の確保)
       uses: easimon/maximize-build-space@master
