@@ -188,6 +188,14 @@ jobs:
         [ -f "openwrt/scripts/projectsmirrors.json" ] && sed -i '/.cn\//d; /tencent/d; /aliyun/d' openwrt/scripts/projectsmirrors.json
         [ -d "openwrt/files" ] && rm -rf openwrt/files
 
+    - name: Cache dl Directory (dlディレクトリのキャッシュ)
+      uses: actions/cache@v3
+      with:
+        path: openwrt/dl
+        key: ${{ runner.os }}-openwrt-dl-v3-${{ hashFiles('**/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-dl-v3-
+
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
       run: |
