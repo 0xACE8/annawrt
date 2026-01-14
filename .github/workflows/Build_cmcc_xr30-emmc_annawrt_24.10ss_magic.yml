@@ -199,6 +199,8 @@ jobs:
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
       run: |
+        # Surgical Clean Go Cache (Goキャッシュの物理削除)
+        [ -d "dl/go-mod-cache" ] && rm -rf dl/go-mod-cache && mkdir -p dl/go-mod-cache
         ${{ secrets.CMCC_XR30_EMMC_PONLY2410_K66_PATCHES }}
         ${{ secrets.ADD_EXTRA_SOURCE }}
         ./scripts/feeds update -a
