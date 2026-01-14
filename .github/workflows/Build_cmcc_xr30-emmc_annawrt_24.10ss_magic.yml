@@ -241,19 +241,21 @@ jobs:
       if: always()
       working-directory: ./openwrt
       run: |
-        # 物理检查：判断工具链核心目录是否存在
         if [ -d "staging_dir/host" ]; then
-          echo "✅ 发现工具链目录，正在执行时间戳伪造..."
+          echo "🚀 正在执行深度欺骗逻辑..."
           
-          # 1. 伪造 stamp 文件，跳过编译校验
+          # 1. 物理 touch 所有 stamp 文件
           find staging_dir -type d -name "stamp" -not -path "*target*" -exec touch {} + 2>/dev/null || true
           
-          # 2. 伪造编译状态标记
+          # 2. 【核心魔改】直接修改主 Makefile，强行删掉 tools 和 toolchain 的编译依赖
+          # 这会让 make 运行的时候根本不去检查 tools/compile 和 toolchain/compile
+          sed -i 's/ $(tool.*\/stamp-compile)//;' Makefile
+          sed -i 's/ $(tool.*\/stamp-install)//;' Makefile
+          
+          # 3. 伪造编译标记
           mkdir -p tmp && echo "1" > tmp/.build
           
-          echo "🚀 时间戳伪造完成，编译器将被‘欺骗’直接进入下一阶段。"
-        else
-          echo "❌ 未发现恢复的工具链目录，将进行完整编译。"
+          echo "✅ 依赖拦截完成，工具链编译已被强行剔除。"
         fi
 
     - name: Restore Config Archive (設定アーカイブの復元)
