@@ -171,10 +171,9 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt -yqq update
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev cargo npm
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev cargo
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
         rustup target add aarch64-unknown-linux-musl
-        nvm install 16 && nvm use 16
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
@@ -314,7 +313,7 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-        tag_name: ${{ env.FILE_DATE }}
+        tag_name: ${{ env.FILE_DATE }}_${{ env.DEVICE_NAME }}_${{ env.PONLY2410_K66_REPO_HEAD }}
         name: ${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_${{ env.KERNEL_VERS }}_${{ env.FILE_DATE }}
         files: ${{ env.FIRMWARE }}/*
         body: |
@@ -389,18 +388,13 @@ jobs:
         retain_days: 0
         keep_minimum_runs: 1
         delete_workflow_pattern: Build_cmcc_xr30-emmc_annawrt_24.10ss_k66x.yml
- 
+  
     - name: Delete Old Releases (古いリリースの削除)
       if: steps.compile.outcome == 'success' && env.INPUT_RELEASE == 'true'
-      shell: bash
-      run: |
-        QUERY="${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_${{ env.KERNEL_VERS }}"
-        OLD_TAGS=$(gh release list --limit 100 --json tagName,title,createdAt | jq -r --arg Q "$QUERY" '
-          [.[] | select(.title | contains($Q))] | sort_by(.createdAt) | reverse | .[2:] | .[].tagName')
-        if [ -n "$OLD_TAGS" ]; then
-          for tag in $OLD_TAGS; do
-            gh release delete "$tag" --yes --cleanup-tag > /dev/null 2>&1
-          done
-          echo "✅ 旧バージョン (${QUERY}) のクリーンアップ完了"
-        fi
+      uses: dev-drprasad/delete-older-releases@master
+      with:
+        keep_latest: 2
+        delete_tags: true
+        delete_tag_pattern: "${{ env.DEVICE_NAME }}_${{ env.PONLY2410_K66_REPO_HEAD }}" 
+    
     
