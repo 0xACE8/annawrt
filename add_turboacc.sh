@@ -9,8 +9,8 @@ if ! [ -d "./package" ]; then
     exit 1
 fi
 
-# 1. 优先扫描 target/linux/generic/，其次扫描 include/（兼顾老版本）
-kernel_versions="$(find "./target/linux/generic" "./include" -maxdepth 1 2>/dev/null | sed -n '/kernel-[0-9]/p' | sed -e 's@.*/kernel-@@' | sort -rV | tr '\n' ' ' | sed 's/ $//')"
+# 扫描 include 和 generic 目录，并通过 sort -rV 确保 6.18 优先并去重
+kernel_versions="$(find "./include" "./target/linux/generic" -maxdepth 1 2>/dev/null | sed -n '/kernel-[0-9]/p' | sed -e 's@.*/kernel-@@' | sort -rV | uniq | tr '\n' ' ' | sed 's/ $//')"
 
 if [ -z "$kernel_versions" ]; then
     echo "Error: Unable to get kernel version, script exited"
@@ -26,10 +26,8 @@ for kv in $kernel_versions; do
     elif [ -f "./include/kernel-$kv" ]; then
         kernel_file="./include/kernel-$kv"
     fi
-    
     full_ver="$kv"
     if [ -n "$kernel_file" ]; then
-        # 兼容 LINUX_VERSION-6.18 = .44 提取出 .44，拼接为 6.18.44
         patch_ver=$(sed -n "s/^LINUX_VERSION-${kv} *= *//p" "$kernel_file" | tr -d '[:space:]')
         if [ -n "$patch_ver" ]; then
             full_ver="${kv}${patch_ver}"
@@ -37,24 +35,12 @@ for kv in $kernel_versions; do
     fi
     kernel_full_versions="${kernel_full_versions:+$kernel_full_versions }$full_ver"
 done
-
 echo "kernel full version: $kernel_full_versions"
 
-# 提取最新的一个内核版本（按 sort -rV 降序，第一个就是最高版本 6.18）
-latest_kernel=$(echo "$kernel_versions" | awk '{print $1}')
-latest_full_kernel=$(echo "$kernel_full_versions" | awk '{print $1}')
-
-echo "latest kernel selected: $latest_kernel ($latest_full_kernel)"
-
-# Find the best matching patch directory based on version threshold.
-# For directories hack-6.12, hack-6.12.78, hack-6.12.85 and kernel 6.12.80:
-#   hack-6.12    (6.12.0)  <= 6.12.80 ✓
-#   hack-6.12.78           <= 6.12.80 ✓  ← highest match, use this
-#   hack-6.12.85           >  6.12.80 ✗
 find_best_patch_dir() {
     local base_path="$1"
-    local kv="$2"    # major.minor, e.g. 6.12
-    local kfv="$3"   # full version, e.g. 6.12.80
+    local kv="$2"    # major.minor, e.g. 6.18
+    local kfv="$3"   # full version, e.g. 6.18.44
 
     local best_dir=""
     local best_ver=""
@@ -65,16 +51,13 @@ find_best_patch_dir() {
         dv="$(basename "$dir")"
         dv="${dv#hack-}"
 
-        # Normalize: "6.12" → "6.12.0" for comparison
         local cmp_ver="$dv"
         case "$dv" in *.*.*) ;; *) cmp_ver="${dv}.0" ;; esac
 
-        # Skip if dir version > actual kernel version
         local smaller
         smaller="$(printf '%s\n%s' "$cmp_ver" "$kfv" | sort -V | head -n1)"
         [ "$smaller" = "$cmp_ver" ] || continue
 
-        # Keep the highest match
         if [ -z "$best_ver" ]; then
             best_dir="$dir"
             best_ver="$cmp_ver"
@@ -103,21 +86,33 @@ mkdir -p "./package/libs/libnftnl/patches"
 echo "Copying lede turboacc files..."
 
 for kernel_version in $kernel_versions; do
-    if [ "$kernel_version" = "6.18" ] || [ "$kernel_version" = "6.12" ] || [ "$kernel_version" = "6.6" ]; then
-        cp -f "$TMPDIR/turboacc/lede/hack-$kernel_version/952-add-net-conntrack-events-support-multiple-registrant.patch" "./target/linux/generic/hack-$kernel_version"
-        cp -f "$TMPDIR/turboacc/lede/hack-$kernel_version/953-net-patch-linux-kernel-to-support-shortcut-fe.patch" "./target/linux/generic/hack-$kernel_version"
-        cp -f "$TMPDIR/turboacc/lede/hack-$kernel_version/982-add-bcm-fullconenat-support.patch" "./target/linux/generic/hack-$kernel_version"
+    src_hack_dir="$TMPDIR/turboacc/lede/hack-$kernel_version"
+    src_pending_dir="$TMPDIR/turboacc/lede/pending-$kernel_version"
+    
+    # 如果远端 turboacc 仓库还没适配 hack-6.18，则退回使用 6.12 的补丁文件复制到你的 hack-6.18
+    if [ ! -d "$src_hack_dir" ]; then
+        echo "Warning: $src_hack_dir not found in turboacc repo, falling back to hack-6.12"
+        src_hack_dir="$TMPDIR/turboacc/lede/hack-6.12"
+        src_pending_dir="$TMPDIR/turboacc/lede/pending-6.12"
+    fi
 
-        if [ -f "$TMPDIR/turboacc/lede/hack-$kernel_version/983-add-bcm-fullconenat-to-nft.patch" ]; then
-            cp -f "$TMPDIR/turboacc/lede/hack-$kernel_version/983-add-bcm-fullconenat-to-nft.patch" "./target/linux/generic/hack-$kernel_version"
+    if [ -d "$src_hack_dir" ]; then
+        cp -f "$src_hack_dir/952-add-net-conntrack-events-support-multiple-registrant.patch" "./target/linux/generic/hack-$kernel_version/" 2>/dev/null
+        cp -f "$src_hack_dir/953-net-patch-linux-kernel-to-support-shortcut-fe.patch" "./target/linux/generic/hack-$kernel_version/" 2>/dev/null
+        cp -f "$src_hack_dir/982-add-bcm-fullconenat-support.patch" "./target/linux/generic/hack-$kernel_version/" 2>/dev/null
+
+        if [ -f "$src_hack_dir/983-add-bcm-fullconenat-to-nft.patch" ]; then
+            cp -f "$src_hack_dir/983-add-bcm-fullconenat-to-nft.patch" "./target/linux/generic/hack-$kernel_version/"
         fi
 
-        if [ -f "$TMPDIR/turboacc/lede/pending-$kernel_version/613-netfilter_optional_tcp_window_check.patch" ]; then
-            cp -f "$TMPDIR/turboacc/lede/pending-$kernel_version/613-netfilter_optional_tcp_window_check.patch" "./target/linux/generic/pending-$kernel_version"
+        if [ -f "$src_pending_dir/613-netfilter_optional_tcp_window_check.patch" ]; then
+            cp -f "$src_pending_dir/613-netfilter_optional_tcp_window_check.patch" "./target/linux/generic/pending-$kernel_version/" 2>/dev/null
         fi
 
-        if ! grep -q "CONFIG_SHORTCUT_FE" "./target/linux/generic/config-$kernel_version"; then
-            echo "# CONFIG_SHORTCUT_FE is not set" >> "./target/linux/generic/config-$kernel_version"
+        if [ -f "./target/linux/generic/config-$kernel_version" ]; then
+            if ! grep -q "CONFIG_SHORTCUT_FE" "./target/linux/generic/config-$kernel_version"; then
+                echo "# CONFIG_SHORTCUT_FE is not set" >> "./target/linux/generic/config-$kernel_version"
+            fi
         fi
     else
         echo "Unsupported kernel version: $kernel_version"
@@ -150,9 +145,14 @@ for i in "${!kv_array[@]}"; do
     kernel_full_ver="${kfv_array[$i]}"
 
     patch_dir=$(find_best_patch_dir "$TMPDIR/turboacc/custom" "$kernel_version" "$kernel_full_ver")
+    # 如果找不到 custom/hack-6.18，则借用 custom/hack-6.12 的自定义补丁
+    if [ -z "$patch_dir" ]; then
+        patch_dir=$(find_best_patch_dir "$TMPDIR/turboacc/custom" "6.12" "$kernel_full_ver")
+    fi
+
     if [ -n "$patch_dir" ]; then
         echo "kernel $kernel_full_ver: using patches from $(basename "$patch_dir")"
-        cp -f "$patch_dir"/*.patch "./target/linux/generic/hack-$kernel_version/"
+        cp -f "$patch_dir"/*.patch "./target/linux/generic/hack-$kernel_version/" 2>/dev/null
     else
         echo "Warning: no matching custom patches found for kernel $kernel_full_ver"
     fi
@@ -172,8 +172,4 @@ cp -f "$TMPDIR/turboacc/custom/shortcut-fe/fast-classifier/patches/001-fix-build
 
 echo ""
 echo "Finish"
-echo ""
-echo "Tip: 如果只需要全锥形 NAT (Full Cone NAT) 而不需要 turboacc 的其他功能，"
-echo "     可以使用独立项目 openwrt-sonic-fullcone："
-echo "     https://github.com/mufeng05/openwrt-sonic-fullcone"
 exit 0
