@@ -9,11 +9,8 @@ if ! [ -d "./package" ]; then
     exit 1
 fi
 
-# 1. 提取版本号后，加上 sort -rV 进行版本语义降序排序
-kernel_versions="$(find "./include" -maxdepth 1 2>/dev/null | sed -n '/kernel-[0-9]/p' | sed -e "s@./include/kernel-@@" | sort -rV | tr '\n' ' ' | sed 's/ $//')"
-if [ -z "$kernel_versions" ]; then
-    kernel_versions="$(find "./target/linux/generic" -maxdepth 1 2>/dev/null | sed -n '/kernel-[0-9]/p' | sed -e "s@./target/linux/generic/kernel-@@" | sort -rV | tr '\n' ' ' | sed 's/ $//')"
-fi
+# 1. 优先扫描 target/linux/generic/，其次扫描 include/（兼顾老版本）
+kernel_versions="$(find "./target/linux/generic" "./include" -maxdepth 1 2>/dev/null | sed -n '/kernel-[0-9]/p' | sed -e 's@.*/kernel-@@' | sort -rV | tr '\n' ' ' | sed 's/ $//')"
 
 if [ -z "$kernel_versions" ]; then
     echo "Error: Unable to get kernel version, script exited"
@@ -24,13 +21,15 @@ echo "kernel version: $kernel_versions"
 kernel_full_versions=""
 for kv in $kernel_versions; do
     kernel_file=""
-    if [ -f "./include/kernel-$kv" ]; then
-        kernel_file="./include/kernel-$kv"
-    elif [ -f "./target/linux/generic/kernel-$kv" ]; then
+    if [ -f "./target/linux/generic/kernel-$kv" ]; then
         kernel_file="./target/linux/generic/kernel-$kv"
+    elif [ -f "./include/kernel-$kv" ]; then
+        kernel_file="./include/kernel-$kv"
     fi
+    
     full_ver="$kv"
     if [ -n "$kernel_file" ]; then
+        # 兼容 LINUX_VERSION-6.18 = .44 提取出 .44，拼接为 6.18.44
         patch_ver=$(sed -n "s/^LINUX_VERSION-${kv} *= *//p" "$kernel_file" | tr -d '[:space:]')
         if [ -n "$patch_ver" ]; then
             full_ver="${kv}${patch_ver}"
@@ -38,11 +37,14 @@ for kv in $kernel_versions; do
     fi
     kernel_full_versions="${kernel_full_versions:+$kernel_full_versions }$full_ver"
 done
+
 echo "kernel full version: $kernel_full_versions"
 
-# 2. 如果后续脚本只需要最新的单个内核版本（比如 6.18）：
+# 提取最新的一个内核版本（按 sort -rV 降序，第一个就是最高版本 6.18）
 latest_kernel=$(echo "$kernel_versions" | awk '{print $1}')
-echo "latest kernel selected: $latest_kernel"
+latest_full_kernel=$(echo "$kernel_full_versions" | awk '{print $1}')
+
+echo "latest kernel selected: $latest_kernel ($latest_full_kernel)"
 
 # Find the best matching patch directory based on version threshold.
 # For directories hack-6.12, hack-6.12.78, hack-6.12.85 and kernel 6.12.80:
