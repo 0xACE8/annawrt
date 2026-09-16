@@ -60,9 +60,9 @@ env:
   GIT_REPO_URL:         ${{ secrets.RUIJIENETCT_LINK }}
   ## immortalwrt 25.12
   GIT_HEAD_REF:         openwrt-24.10-6.6
-  SYNC_PLUGINS:         ${{ github.workspace }}/${{ secrets.PLUGINS_2512_ACE }}
-  SOURCE_PATCH:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_IM2512 }}
-  FEEDS_CONFIG:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_IM2512 }}
+  SYNC_PLUGINS:         ${{ github.workspace }}/${{ secrets.PLUGS_ACE_PD2512 }}
+  SOURCE_PATCH:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_PD2512 }}
+  FEEDS_CONFIG:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_PD2512 }}
   ## github ci scripts
   CHECK_SERVER:         ${{ github.workspace }}/${{ secrets.TEST_SERVER_PERF }}
   EXPAND_SPACE:         ${{ github.workspace }}/${{ secrets.FREE_DISKS_SPACE }}
@@ -74,14 +74,14 @@ env:
   CALC_RUNTIME:         ${{ github.workspace }}/${{ secrets.CALC_RUNING_TIME }}
   ## device configure
   PRIVATEPATCH:         ${{ github.workspace }}/${{ secrets.PRIVATE_SETPATCH }}
-  DEVICE_PATCH:         ${{ secrets.DEVICE_DIFFPATCH }}
-  BUILD_CONFIG:         ${{ secrets.BUILD_DIFFCONFIG }}
-  BACKUP_FILES:         ${{ secrets.BACKUP_CONFIGURE }}
+  DEVICE_PATCH:         ${{ secrets.PATCHS_PDON_XR30 }}
+  BUILD_CONFIG:         ${{ secrets.CONFIG_PDON_XR30 }}
+  BACKUP_FILES:         ${{ secrets.BACKUP_PDON_XR30 }}
   ARGON_COLORS:         ${{ secrets.ARGON_THEMECOLOR }}
-  NEW_HW_SUPOT:         ${{ github.workspace }}/${{ secrets.HARDWARE_SUPPORT }}
+  # NEW_HW_SUPOT:         ${{ github.workspace }}/${{ secrets.HARDWARE_SUPPORT }}
   ## upload firmware
   UPTO_RELEASE:         ${{ github.workspace }}/${{ secrets.UPLOADTO_RELEASE }}
-  UP_WENSHUSHU:         ${{ github.workspace }}/${{ secrets.UPLOAD_WENSHUSHU }}
+  # UP_WENSHUSHU:         ${{ github.workspace }}/${{ secrets.UPLOAD_WENSHUSHU }}
   ## cache repo
   CACHE_REPOSI:         ${{ secrets.CACHE_REPOSITORY }}
   UPLOAD_CACHE:         ${{ github.workspace }}/${{ secrets.UP_COMPILE_CACHE }}
