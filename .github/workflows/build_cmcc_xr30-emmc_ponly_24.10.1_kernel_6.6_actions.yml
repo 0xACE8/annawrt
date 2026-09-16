@@ -175,7 +175,7 @@ jobs:
       working-directory: ./openwrt
       run: |
         # add hardware driver
-        ${{ env.NEW_HW_SUPOT }}
+        #${{ env.NEW_HW_SUPOT }}
         ./scripts/feeds update -a
         # packages lang update (rust and goland)
         ${{ env.UPDATE_LANGS }}
