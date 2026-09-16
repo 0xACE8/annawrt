@@ -78,7 +78,7 @@ env:
   BUILD_CONFIG:         ${{ secrets.CONFIG_PDON_XR30 }}
   BACKUP_FILES:         ${{ secrets.BACKUP_PDON_XR30 }}
   ARGON_COLORS:         ${{ secrets.ARGON_THEMECOLOR }}
-  # NEW_HW_SUPOT:         ${{ github.workspace }}/${{ secrets.HARDWARE_SUPPORT }}
+  NEW_HW_SUPOT:         ${{ github.workspace }}/${{ secrets.HARDWARE_SUPPORT }}
   ## upload firmware
   UPTO_RELEASE:         ${{ github.workspace }}/${{ secrets.UPLOADTO_RELEASE }}
   # UP_WENSHUSHU:         ${{ github.workspace }}/${{ secrets.UPLOAD_WENSHUSHU }}
