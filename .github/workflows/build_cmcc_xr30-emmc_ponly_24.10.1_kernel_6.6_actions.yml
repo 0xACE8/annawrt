@@ -43,7 +43,7 @@ on:
 env:
   ## hardware & repo info
   TARGET_MODEL:         cmcc_xr30-emmc
-  TARGET_CHIPS:         mt7981b
+  TARGET_CHIPS:         mt7981
   TARGET_MEDIA:         8g-emmc
   OUTPUT_FILES:         annawrt-24.10.1-cmcc_xr30-8gb_emmc
   TZ: "Asia/Tokyo"
