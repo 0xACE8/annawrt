@@ -59,7 +59,7 @@ env:
   ## immortalwrt source
   GIT_REPO_URL:         ${{ secrets.ANNAWRT_RPO_LINK }}
   ## immortalwrt 25.12
-  GIT_HEAD_REF:         openwrt-24.10-6.6
+  GIT_HEAD_REF:         openwrt-24.10
   SYNC_PLUGINS:         ${{ github.workspace }}/${{ secrets.PLUGS_ACE_PD2512 }}
   SOURCE_PATCH:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_PD2512 }}
   FEEDS_CONFIG:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_PD2512 }}
